@@ -16,5 +16,6 @@ setup(
     install_requires=[
         "boto==2.36.0",
         "python-novaclient==2.22.0",
+        "paramiko==1.15.2"
     ],
 )
