@@ -79,8 +79,7 @@ class ConfigureRDS(AWSConfig):
 
     def dump(self, instance):
         dump_file = "/tmp/cloudscale-dump.sql"
-        if not os.path.isfile(dump_file):
-            urllib.urlretrieve(self.database_dump_url, dump_file)
+        urllib.urlretrieve(self.database_dump_url, dump_file)
 
         cmd = [os.path.dirname(__file__) + "/dump.sh", str(instance.endpoint[0]), self.database_user, self.database_password, self.database_name, dump_file]
         subprocess.check_output(cmd)
