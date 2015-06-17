@@ -3,6 +3,7 @@ from setuptools import find_packages
 
 setup(
     name='cloudscale-deployment-scripts',
+    namespace_packages=['cloudscale'],
     version='0.1.0',
     author='Simon Ivansek',
     author_email='simon.ivansek@xlab.si',
