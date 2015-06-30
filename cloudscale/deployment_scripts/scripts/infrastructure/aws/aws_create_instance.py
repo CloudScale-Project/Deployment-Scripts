@@ -1,3 +1,4 @@
+import traceback
 import boto, boto.exception
 import boto, boto.ec2
 import boto.manage.cmdshell
@@ -59,7 +60,7 @@ class CreateEC2Instance(AWSConfig):
             self.conn.authorize_security_group(group_name=name, ip_protocol='tcp', from_port=port, to_port=port, cidr_ip=cidr)
         except boto.exception.EC2ResponseError as e:
             if str(e.error_code) != 'InvalidGroup.Duplicate':
-                raise
+                logger.log(traceback.format_exc())
 
     def create_instance(self):
         self.logger.log("Creating EC2 instance ...")

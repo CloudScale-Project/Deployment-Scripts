@@ -1,3 +1,4 @@
+import traceback
 import urllib
 import boto.exception
 import boto, boto.ec2, boto.rds
