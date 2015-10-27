@@ -10,6 +10,9 @@ the handling of scalability problems of software-based services.
 
 You can read more about CloudScale project on: http://www.cloudscale-project.eu
 
+## Prerequisites
+Before you can use deployment scripts you need to install MySQL on your system.
+
 ## Installation
 To install scripts download zip or checkout repository and then run:
 
