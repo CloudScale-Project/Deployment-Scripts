@@ -11,7 +11,13 @@ the handling of scalability problems of software-based services.
 You can read more about CloudScale project on: http://www.cloudscale-project.eu
 
 ## Prerequisites
-Before you can use deployment scripts you need to install MySQL on your system.
+Before you can use deployment scripts you need to install MySQL on your system. You can do that by executing command:
+
+```
+$ brew install mysql
+```
+
+You should also check the path to the ```mysql``` command in ```scripts/platform/aws/dump.sh``` file. This path can be different, depends on OS on which you are running deployment scripts. On Linux it is in ```/usr/bin/mysql``` or ```/bin/mysql```.
 
 ## Installation
 To install scripts download zip or checkout repository and then run:
