@@ -30,6 +30,10 @@ You can run scripts in ```cloudscale/deployment_scripts/scripts/``` as standalon
 application is in ```bin/run.py``` file.
 
 ### Amazon Web Services
+## Setup RDS service
+Before you can run deployment scripts you must setup RDS service. On RDS service create new Parameter Group with name 'mygroup' and set the parameter ```query_cache_size`` to value 0.
+
+## Run deployment scripts
 To deploy showcase on Amazon Web Services edit ```bin/config.aws.ini``` file and run:
 
 ```
