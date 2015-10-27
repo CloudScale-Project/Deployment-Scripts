@@ -29,6 +29,7 @@ class CreateEC2Instance(AWSConfig):
         return instance
 
     def create_all(self, num_instances):
+        self.create_security_groups()
         res = self.conn.run_instances(
             self.ami_id,
             max_count=num_instances,
