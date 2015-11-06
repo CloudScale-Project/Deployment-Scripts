@@ -12,7 +12,7 @@ def read_config(config_file):
 
 class Checker:
     def __init__(self):
-        self.cfg = read_config('config.ini')
+        self.cfg = read_config('config.openstack.ini')
 
         self.user = self.cfg.get('OPENSTACK', 'username')
         self.pwd = self.cfg.get('OPENSTACK', 'password')

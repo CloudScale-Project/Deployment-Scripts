@@ -9,9 +9,12 @@ from cloudscale.deployment_scripts.scripts import check_args, get_cfg_logger
 
 class DeploySoftware:
 
-    def __init__(self, this):
+    def __init__(self, config, ip_addresses, deploy_name, key_pair):
 
-        self.props = this
+        self.props = config
+        self.key_pair = key_pair
+        self.deploy_name = deploy_name
+        self.ip_addresses = ip_addresses
 
         #self.compile()
         self.deploy_software()
@@ -19,12 +22,12 @@ class DeploySoftware:
     def write_db_config(self, ssh, path):
         cfg = "jdbc.dbtype=mysql\n"
 
-        if int(self.props.rds_num_replicas) > 1:
+        if int(self.props.database_num_replicas) > 1:
             cfg += 'jdbc.driverClassName=com.mysql.jdbc.ReplicationDriver\n'
-            cfg += 'jdbc.url=jdbc:mysql:replication://%s/%s\n' % (self.props.cfg.get('platform', 'urls'), self.props.database_name )
+            cfg += 'jdbc.url=jdbc:mysql:replication://%s/%s\n' % (self.props.config.cfg.get('platform', 'urls'), self.props.database_name )
         else:
             cfg += 'jdbc.driverClassName=com.mysql.jdbc.Driver\n'
-            cfg += 'jdbc.url=jdbc:mysql://%s/%s\n' % (self.props.cfg.get('platform', 'urls'), self.props.database_name)
+            cfg += 'jdbc.url=jdbc:mysql://%s/%s\n' % (self.props.config.cfg.get('platform', 'urls'), self.props.database_name)
 
         cfg += 'jdbc.username=%s\n' % self.props.database_user
         cfg += 'jdbc.password=%s\n' % self.props.database_password
@@ -47,7 +50,7 @@ class DeploySoftware:
 
 
     def deploy_software(self):
-        for ip_address in self.props.ip_addresses:
+        for ip_address in self.ip_addresses:
             if sys.platform == 'win32':
                 self.windows_shell(ip_address);
             else:
@@ -68,7 +71,7 @@ class DeploySoftware:
             _, stdout, _ = ssh.exec_command('wget -T90 -q %s -O showcase.war' % showcase_url)
             self.wait_for_command(stdout)
 
-            _, stdout, _ = ssh.exec_command("sudo unzip -o showcase.war -d %s" % self.props.deploy_name)
+            _, stdout, _ = ssh.exec_command("sudo unzip -o showcase.war -d %s" % self.deploy_name)
             self.wait_for_command(stdout)
 
             self.write_db_config(ssh, 'showcase-1-a/WEB-INF/classes/database/database.aws.hibernate.properties')
@@ -92,8 +95,9 @@ class DeploySoftware:
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-        if self.props.key_pair:
-            ssh.connect(ip_address, username=self.props.remote_user, key_filename=self.props.key_pair)
+
+        if self.key_pair:
+            ssh.connect(ip_address, username=self.props.remote_user, key_filename=self.key_pair)
         else:
             ssh.connect(ip_address, username=self.props.remote_user)
         return ssh

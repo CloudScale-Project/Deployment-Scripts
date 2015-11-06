@@ -12,37 +12,36 @@ from cloudscale.deployment_scripts.scripts.infrastructure.openstack import opens
 
 
 
-class Frontend(AWSConfig):
+class Frontend:
 
     def __init__(self, config, logger):
-        AWSConfig.__init__(self, config, logger)
-
+        self.config = config
+        self.logger = logger
         self.instance_ids = []
         self.ip_addresses = []
 
         self.file_path = "/".join(os.path.abspath(__file__).split('/')[:-1])
 
-        self.remote_deploy_path = self.cfg.get('software', 'remote_deploy_path')
+        self.remote_deploy_path = self.config.cfg.get('software', 'remote_deploy_path')
         self.deploy_name = "showcase-1-a"
 
     def setup_aws_frontend(self):
 
         i = aws_create_keypair.CreateKeyPair(
             config=self.config,
-            user_path=self.config.user_path,
+            user_path=self.config.config.user_path,
             logger=self.logger
         )
         i.create()
 
-        self.config.save('EC2', 'key_pair', "%s/%s.pem" % (self.config.user_path, self.config.cfg.get('EC2', 'key_name')))
-
-        self.key_pair = self.cfg.get('EC2', 'key_pair')
+        self.config.config.save('EC2', 'key_pair', "%s/%s.pem" % (self.config.config.user_path, self.config.cfg.get('EC2', 'key_name')))
+        key_pair = self.config.cfg.get('EC2', 'key_pair')
 
         showcase_url = None
-        if not self.is_autoscalable:
+        if not self.config.is_autoscalable:
             i = aws_create_instance.CreateEC2Instance(config=self.config, logger=self.logger)
 
-            instances = i.create_all(self.num_instances)
+            instances = i.create_all(self.config.num_instances)
 
 
             for instance in instances:
@@ -57,17 +56,17 @@ class Frontend(AWSConfig):
                 )
                 loadbalancer = i.create(instances)
 
-            deploy_showcase.DeploySoftware(self)
+            deploy_showcase.DeploySoftware(self.config, self.ip_addresses, self.deploy_name, key_pair)
 
             showcase_url = loadbalancer.dns_name if loadbalancer else instances[0].ip_address
 
         else:
             i = aws_create_instance.CreateEC2Instance(config=self.config, logger=self.logger)
             instance = i.create()
-            self.config.save('infrastructure', 'ip_address', instance.ip_address)
+            self.config.config.save('infrastructure', 'ip_address', instance.ip_address)
             self.ip_addresses.append(instance.ip_address)
 
-            deploy_showcase.DeploySoftware(self)
+            deploy_showcase.DeploySoftware(self.config, self.ip_addresses, self.deploy_name, key_pair)
 
             aws_create_ami.EC2CreateAMI(config=self.config, logger=self.logger)
 

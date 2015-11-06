@@ -5,6 +5,7 @@ import sys
 from cloudscale.deployment_scripts import deploy
 from cloudscale.deployment_scripts.logger import Logger
 
+
 class MyLogger(Logger):
 
     def log(self, msg, level=logging.INFO, append_to_last=False, fin=False):

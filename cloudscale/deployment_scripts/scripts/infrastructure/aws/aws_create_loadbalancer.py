@@ -9,7 +9,7 @@ from cloudscale.deployment_scripts.scripts import check_args, get_cfg_logger
 class CreateLoadbalancer(AWSConfig):
 
     def __init__(self, config, logger):
-        AWSConfig.__init__(self, config, logger)
+        AWSConfig.__init__(self, config.config, logger)
 
     def create(self, instances):
         self.instances = instances

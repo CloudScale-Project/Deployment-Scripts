@@ -9,28 +9,29 @@ from cloudscale.deployment_scripts.scripts import check_args, get_cfg_logger
 from cloudscale.deployment_scripts.scripts.software import deploy_showcase
 
 
-class CreateInstance(OpenstackConfig):
+class CreateInstance:
 
     def __init__(self, config, logger):
-        OpenstackConfig.__init__(self, config, logger)
+        self.config = config
+        self.logger = logger
         self.mvn_path = '/usr/bin/mvn'
         self.file_path = "/".join(os.path.abspath(__file__).split('/')[:-1])
 
-        self.remote_deploy_path = self.cfg.get('software', 'remote_deploy_path')
+        self.remote_deploy_path = self.config.cfg.get('software', 'remote_deploy_path')
 
         self.instance_name = 'cloudscale-sc'
 
         self.showcase_image_name = "cloudscale-sc-image"
 
-        self.showcase_location = self.showcase_url
+        self.showcase_location = self.config.showcase_location
         self.deploy_name = "showcase-1-a"
-        if self.database_type != 'mysql':
+        if self.config.database_type != 'mysql':
             self.deploy_name="showcase-1-b"
             self.showcase_image_name = "cloudscale-sc-mongo-image"
 
         self.delete_image(self.showcase_image_name)
         self.logger.log("Creating showcase instance image:")
-        images = self.nc.images.list()
+        images = self.config.nc.images.list()
         for image in images:
             if image.name == self.showcase_image_name:
                 self.logger.log('Image already exists.')
@@ -40,22 +41,23 @@ class CreateInstance(OpenstackConfig):
 
             userdata = """#!/bin/bash
 USERNAME=%s
-""" % self.remote_user + open(self.file_path + '/install-apache-tomcat.sh', 'r').read()
+""" % self.config.remote_user + open(self.file_path + '/install-apache-tomcat.sh', 'r').read()
             server_id = self.create_instance()
-            time.sleep(40)
+            time.sleep(90)
             server_floating_ip = self.add_floating_ip(server_id)
-            self.config.save('infrastructure', 'ip_address', server_floating_ip)
-            self.ip_addresses = self.cfg.get('infrastructure', 'ip_address').split(",")
+            self.config.config.save('infrastructure', 'ip_address', server_floating_ip)
+            self.ip_addresses = self.config.cfg.get('infrastructure', 'ip_address').split(",")
             self.add_security_group(server_id, "ssh")
 
             self.install_software(server_floating_ip, userdata)
             self.upload_configs(server_floating_ip)
 
-            deploy_showcase.DeploySoftware(self)
+            deploy_showcase.DeploySoftware(config, self.ip_addresses, self.deploy_name, self.config.key_pair)
             #self.deploy_showcase(server_floating_ip)
 
-            self.wait_powered_off(server_floating_ip, server_id)
+            # self.wait_powered_off(server_floating_ip, server_id)
             self.create_image(server_id, self.showcase_image_name)
+            time.sleep(60)
             self.delete_instance(server_id)
 
             self.logger.log('Done creating showcase instance image')
@@ -70,7 +72,7 @@ USERNAME=%s
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         while True:
             try:
-                ssh.connect(ip, username=self.remote_user, key_filename=os.path.abspath(self.key_pair))
+                ssh.connect(ip, username=self.config.remote_user, key_filename=os.path.abspath(self.config.key_pair))
                 break
             except:
                 time.sleep(5)
@@ -85,7 +87,7 @@ USERNAME=%s
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         while True:
             try:
-                ssh.connect(ip, username=self.remote_user, key_filename=os.path.abspath(self.key_pair))
+                ssh.connect(ip, username=self.config.remote_user, key_filename=os.path.abspath(self.config.key_pair))
                 break
             except:
                 time.sleep(5)
@@ -118,7 +120,7 @@ USERNAME=%s
 
     def delete_image(self, image_name):
         try:
-            for image in self.nc.images.list():
+            for image in self.config.nc.images.list():
                 if image.name == image_name:
                     image.delete()
                     break
@@ -127,25 +129,25 @@ USERNAME=%s
 
     def delete_instance(self, server_id):
         self.logger.log("Deleting instance ...")
-        server = self.nc.servers.get(server_id)
+        server = self.config.nc.servers.get(server_id)
         server.delete()
 
     def create_instance(self, image_name=None, files=None, userdata=None, wait_on_active_status=True):
         if image_name is None:
-            image_name = self.image_name
+            image_name = self.config.image_name
 
-        flavor = self.nc.flavors.find(name=self.instance_type)
+        flavor = self.config.nc.flavors.find(name=self.config.instance_type)
         if flavor is None:
-            self.logger.log("Instance flavor '%s' not found!" % self.instance_type)
+            self.logger.log("Instance flavor '%s' not found!" % self.config.instance_type)
             return False
 
-        image = self.nc.images.find(name=image_name)
+        image = self.config.nc.images.find(name=image_name)
         if image is None:
             self.logger.log("Image '%s' not found!" % image_name)
             return False
 
-        server_id = self.nc.servers.create(
-            self.instance_name, image, flavor, key_name=self.key_name, files=files, userdata=userdata
+        server_id = self.config.nc.servers.create(
+            self.instance_name, image, flavor, key_name=self.config.key_name, files=files, userdata=userdata
         ).id
 
         #if wait_on_active_status and not self.wait_active(server_id):
@@ -168,7 +170,7 @@ USERNAME=%s
     def wait_powered_off(self, ip, server_id):
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(ip, username=self.remote_user, key_filename=os.path.abspath(self.key_pair))
+        ssh.connect(ip, username=self.config.remote_user, key_filename=os.path.abspath(self.config.key_pair))
         _, stdout, _ = ssh.exec_command("sudo poweroff")
         self.wait_for_command(stdout, verbose=True)
 
@@ -181,7 +183,7 @@ USERNAME=%s
 
     def wait_for_instance_status(self, server_id, current_status, wait_for_status):
         while True:
-            server = self.nc.servers.get(server_id)
+            server = self.config.nc.servers.get(server_id)
             if server.status != current_status:
                 if server.status == wait_for_status:
                     return True
@@ -190,11 +192,11 @@ USERNAME=%s
 
     def create_image(self, server_id, image_name):
         self.logger.log("Creating image ...")
-        server = self.nc.servers.get(server_id)
+        server = self.config.nc.servers.get(server_id)
         image_id = server.create_image(image_name)
 
         while True:
-            image = self.nc.images.get(image_id)
+            image = self.config.nc.images.get(image_id)
             if image.status == u'ACTIVE':
                 return True
             if image.status == u'ERROR':
@@ -206,7 +208,7 @@ USERNAME=%s
         self.logger.log("Downloading showcase from Jenkins...")
         if self.database_type == "mysql":
             ps = subprocess.Popen('cd ' + self.file_path + '/showcase; '+ self.mvn_path + ' -Pamazon-hibernate -Dconnection_pool_size='
-                                        + self.connection_pool_size + ' install',
+                                        + self.config.connection_pool_size + ' install',
                                   shell=True)
             ps.wait()
             if ps.returncode != 0:
@@ -214,7 +216,7 @@ USERNAME=%s
                 pass
         else:
             ps = subprocess.Popen('cd ' + self.file_path + '/showcase; ' + self.mvn_path + ' -Pamazon-mongodb -Dconnection_pool_size='
-                                        + self.connection_pool_size + ' install',
+                                        + self.config.connection_pool_size + ' install',
                                   shell=True)
             ps.wait()
             if ps.returncode != 0:
@@ -224,7 +226,7 @@ USERNAME=%s
     def create_showcase_instances(self):
         showcase_server_ids = []
 
-        for i in range(int(self.num_instances)):
+        for i in range(int(self.config.num_instances)):
             self.logger.log("Creating showcase instance %s ..." % (i + 1))
             showcase_server_ids.append(
                 self.create_instance(image_name=self.showcase_image_name, wait_on_active_status=False)
@@ -237,17 +239,17 @@ USERNAME=%s
             self.add_security_group(server_id, 'http')
 
     def add_floating_ip(self, server_id):
-        server = self.nc.servers.get(server_id)
-        unallocated_floating_ips = self.nc.floating_ips.findall(fixed_ip=None)
+        server = self.config.nc.servers.get(server_id)
+        unallocated_floating_ips = self.config.nc.floating_ips.findall(fixed_ip=None)
         if len(unallocated_floating_ips) < 1:
-            unallocated_floating_ips.append(self.nc.floating_ips.create())
+            unallocated_floating_ips.append(self.config.nc.floating_ips.create())
         floating_ip = unallocated_floating_ips[0]
         server.add_floating_ip(floating_ip)
         return floating_ip.ip
 
     def add_security_group(self, server_id, group_name):
         self.logger.log("Adding security group %s" % group_name)
-        server = self.nc.servers.get(server_id)
+        server = self.config.nc.servers.get(server_id)
         server.add_security_group(group_name)
 
     def deploy_showcase(self, ip_address):
@@ -256,7 +258,7 @@ USERNAME=%s
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         while True:
             try:
-                ssh.connect(ip_address, username=self.remote_user, key_filename=os.path.abspath(self.key_pair))
+                ssh.connect(ip_address, username=self.config.remote_user, key_filename=os.path.abspath(self.config.key_pair))
                 break
             except:
                 time.sleep(5)
@@ -280,12 +282,12 @@ USERNAME=%s
         return server_ip
 
     def create_showcase_database_config(self):
-        if self.database_type == 'mysql':
+        if self.config.config.database_type == 'mysql':
             self.logger.log("Creating jdbc configuration")
             path = self.file_path + '/showcase/src/main/resources/database/database.aws.hibernate.properties'
 
-            master_server = self.nc.servers.findall(name='cloudscale-db-master')
-            servers = self.nc.servers.findall(name='cloudscale-db')
+            master_server = self.config.nc.servers.findall(name='cloudscale-db-master')
+            servers = self.config.nc.servers.findall(name='cloudscale-db')
             ips = [self.get_ip(master_server[0])]
             for server in servers:
                 server_ip = self.get_ip(server)
@@ -298,19 +300,19 @@ USERNAME=%s
             jdbc_url = 'jdbc.url=jdbc:mysql:loadbalance://%s/%s?autoReconnect=true&loadBalanceBlacklistTimeout=5000\n' % (urls, self.database_name)
             if self.config.db.get('setup_type') == 'master-slave':
                 driver = 'jdbc.driverClassName=com.mysql.jdbc.ReplicationDriver\n'
-                jdbc_url = 'jdbc.url=jdbc:mysql:replication://%s/%s?autoReconnect=true\n' % (urls, self.database_name)
+                jdbc_url = 'jdbc.url=jdbc:mysql:replication://%s/%s?autoReconnect=true\n' % (urls, self.config.database_name)
 
             f.write(driver)
             f.write(jdbc_url)
-            f.write('jdbc.username=%s\n' % self.database_user)
-            f.write('jdbc.password=%s\n' % self.database_pass)
+            f.write('jdbc.username=%s\n' % self.config.database_user)
+            f.write('jdbc.password=%s\n' % self.config.database_password)
             f.write('jdbc.hibernate.dialect=org.hibernate.dialect.MySQLDialect\n')
             f.close()
         else:
             self.logger.log("Creating jdbc configuration")
             path = self.file_path + '/showcase/src/main/resources/database/database.aws.mongodb.properties'
 
-            servers = self.nc.servers.findall(name='cloudscale-db-mongo')
+            servers = self.config.nc.servers.findall(name='cloudscale-db-mongo')
             ips = []
             for server in servers:
                 server_ip = self.get_ip(server)

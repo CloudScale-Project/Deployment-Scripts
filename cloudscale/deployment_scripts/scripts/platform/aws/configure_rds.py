@@ -1,4 +1,3 @@
-import traceback
 import urllib
 import boto.exception
 import boto, boto.ec2, boto.rds
@@ -11,14 +10,14 @@ from cloudscale.deployment_scripts.config import AWSConfig
 from cloudscale.deployment_scripts.scripts import check_args, get_cfg_logger
 
 
-class ConfigureRDS(AWSConfig):
+class ConfigureRDS:
 
     def __init__(self, config, logger):
-        AWSConfig.__init__(self, config, logger)
-
-        self.conn = boto.rds.connect_to_region(self.region,
-                                               aws_access_key_id=self.access_key,
-                                               aws_secret_access_key=self.secret_key
+        self.config = config
+        self.logger = logger
+        self.conn = boto.rds.connect_to_region(self.config.region,
+                                               aws_access_key_id=self.config.access_key,
+                                               aws_secret_access_key=self.config.secret_key
         )
 
         sg_id = self.create_security_group('mysql', 'Security group for MYSQL protocol', '3306', '0.0.0.0/0')
@@ -26,7 +25,7 @@ class ConfigureRDS(AWSConfig):
         self.import_data(instance)
 
         replicas_urls = []
-        if self.rds_num_replicas > 0:
+        if self.config.database_num_replicas > 0:
             replicas_urls = self.create_read_replicas()
 
         self.write_config(instance.endpoint[0], replicas_urls)
@@ -34,13 +33,13 @@ class ConfigureRDS(AWSConfig):
     def create_read_replicas(self):
         urls = []
         instance_ids = []
-        for i in xrange(self.rds_num_replicas):
+        for i in xrange(self.config.database_num_replicas):
             self.logger.log("Creating read replica " + str(i+1))
             try:
                 instance = self.conn.create_dbinstance_read_replica(
-                    self.rds_replica_identifier + str(i+1),
-                    self.rds_master_identifier,
-                    self.rds_instance_type,
+                    self.config.rds_replica_identifier + str(i+1),
+                    self.config.rds_master_identifier,
+                    self.config.rds_instance_type,
                     param_group='mygroup',
                     availability_zone="eu-west-1a"
                 )
@@ -48,15 +47,15 @@ class ConfigureRDS(AWSConfig):
                 if not e.error_code == 'DBInstanceAlreadyExists':
                     raise
                 else:
-                    id = self.rds_replica_identifier + str(i+1)
+                    id = self.config.rds_replica_identifier + str(i+1)
                     self.logger.log("Modifying RDS %s" % id)
-                    self.conn.modify_dbinstance(id=id, instance_class=self.rds_instance_type, apply_immediately=True)
+                    self.conn.modify_dbinstance(id=id, instance_class=self.config.rds_instance_type, apply_immediately=True)
                     time.sleep(60)
 
-        for i in xrange(self.rds_num_replicas):
-            instance = self.conn.get_all_dbinstances(instance_id=self.rds_replica_identifier + str(i+1))[0]
+        for i in xrange(self.config.database_num_replicas):
+            instance = self.conn.get_all_dbinstances(instance_id=self.config.rds_replica_identifier + str(i+1))[0]
             self.wait_available(instance)
-            instance = self.conn.get_all_dbinstances(instance_id=self.rds_replica_identifier + str(i+1))[0]
+            instance = self.conn.get_all_dbinstances(instance_id=self.config.rds_replica_identifier + str(i+1))[0]
             urls.append(instance.endpoint[0])
 
         return urls
@@ -80,9 +79,10 @@ class ConfigureRDS(AWSConfig):
 
     def dump(self, instance):
         dump_file = "/tmp/cloudscale-dump.sql"
-        urllib.urlretrieve(self.database_dump_url, dump_file)
+        if not os.path.isfile(dump_file):
+            urllib.urlretrieve(self.config.database_dump_url, dump_file)
 
-        cmd = [os.path.dirname(__file__) + "/dump.sh", str(instance.endpoint[0]), self.database_user, self.database_password, self.database_name, dump_file]
+        cmd = [os.path.dirname(__file__) + "/dump.sh", str(instance.endpoint[0]), self.config.database_user, self.config.database_password, self.config.database_name, dump_file]
         subprocess.check_output(cmd)
 
     def write_showcase_database_config(self, instance):
@@ -93,14 +93,14 @@ class ConfigureRDS(AWSConfig):
         f.write("jdbc.driverClassName=com.mysql.jdbc.Driver\n")
         f.write("jdbc.url=jdbc:mysql://" + instance.ip_address + "/tpcw\n")
         f.write("jdbc.username=root\n")
-        f.write("jdbc.password=" + self.db_password + "\n")
+        f.write("jdbc.password=" + self.config.db_password + "\n")
         f.write("jdbc.hibernate.dialect=org.hibernate.dialect.MySQLDialect\n")
         f.close()
         return path
 
     def generate(self, config_path):
         script_path = os.path.abspath('generate.sh')
-        subprocess.call([script_path, 'file:///' + config_path, self.cfg.get('RDS', 'generate_type')])
+        subprocess.call([script_path, 'file:///' + config_path, self.config.cfg.get('RDS', 'generate_type')])
 
 
     def write_config(self, instance):
@@ -108,9 +108,9 @@ class ConfigureRDS(AWSConfig):
         f.write('')
 
     def create_security_group(self, name, description, port, cidr):
-        ec2_conn = boto.ec2.connect_to_region(self.region,
-                                              aws_access_key_id=self.access_key,
-                                              aws_secret_access_key=self.secret_key)
+        ec2_conn = boto.ec2.connect_to_region(self.config.region,
+                                              aws_access_key_id=self.config.access_key,
+                                              aws_secret_access_key=self.config.secret_key)
         try:
             ec2_conn.create_security_group(name, description)
             ec2_conn.authorize_security_group(group_name=name, ip_protocol='tcp', from_port=port, to_port=port, cidr_ip=cidr)
@@ -129,12 +129,12 @@ class ConfigureRDS(AWSConfig):
 
         try:
             instance = self.conn.create_dbinstance(
-                self.rds_master_identifier,
+                self.config.rds_master_identifier,
                 5,
-                self.rds_instance_type,
-                self.database_user,
-                self.database_password,
-                db_name=self.database_name,
+                self.config.rds_instance_type,
+                self.config.database_user,
+                self.config.database_password,
+                db_name=self.config.database_name,
                 vpc_security_groups=[sg_id],
                 availability_zone='eu-west-1a',
                 backup_retention_period=1,
@@ -144,16 +144,16 @@ class ConfigureRDS(AWSConfig):
             if not e.error_code == 'DBInstanceAlreadyExists':
                 raise Exception(e)
             else:
-                id = self.cfg.get('RDS', 'master_identifier')
+                id = self.config.cfg.get('RDS', 'master_identifier')
                 self.logger.log("Modifying RDS %s ..." % id)
-                self.conn.modify_dbinstance(id=id, instance_class=self.rds_instance_type, apply_immediately=True)
+                self.conn.modify_dbinstance(id=id, instance_class=self.config.rds_instance_type, apply_immediately=True)
                 #time.sleep(60)
         finally:
-            instance = self.conn.get_all_dbinstances(instance_id=self.rds_master_identifier)[0]
+            instance = self.conn.get_all_dbinstances(instance_id=self.config.rds_master_identifier)[0]
 
         self.wait_available(instance)
 
-        instance = self.conn.get_all_dbinstances(instance_id=self.rds_master_identifier)[0]
+        instance = self.conn.get_all_dbinstances(instance_id=self.config.rds_master_identifier)[0]
 
         return instance
 
@@ -178,7 +178,7 @@ class ConfigureRDS(AWSConfig):
         urls = master_url
         if len(replica_urls) > 0:
             urls += "," + ",".join(replica_urls)
-        self.config.save('platform', 'urls', urls)
+        self.config.config.save('platform', 'urls', urls)
         # f = open(os.path.abspath('../platform.ini'), 'w')
         # f.write('[Database]\n')
         # f.write('db_urls=' + master_url)

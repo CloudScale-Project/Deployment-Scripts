@@ -2,7 +2,7 @@
 echo "NOTE: installing apache tomcat"
 echo "nameserver 8.8.8.8" | sudo tee --append /etc/resolv.conf
 sudo apt-get update
-sudo apt-get install -y zip tomcat7 apache2 openjdk-7-jdk
+sudo apt-get install -y zip python-dev tomcat7 apache2 openjdk-7-jdk
 
 sudo sed -i 's/^securerandom.source=file:\/dev\/urandom$/securerandom.source=file\:\/dev\/.\/urandom/' /usr/lib/jvm/java-7-openjdk-amd64/jre/lib/security/java.security
 sudo sed -i 's/^JAVA_OPTS="-Djava.awt.headless=true -Xmx128m -XX:+UseConcMarkSweepGC"$/JAVA_OPTS="-Djava.awt.headless=true -Xmx2024m -XX:+UseConcMarkSweepGC"/' /etc/default/tomcat7

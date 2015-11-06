@@ -11,17 +11,18 @@ from cloudscale.deployment_scripts.config import AWSConfig
 from cloudscale.deployment_scripts.scripts import check_args, get_cfg_logger
 
 
-class Autoscalability(AWSConfig):
+class Autoscalability:
 
     def __init__(self, config, logger):
-        AWSConfig.__init__(self, config, logger)
-        self.as_ami_id = self.cfg.get('infrastructure', 'ami_id')
+        self.config = config
+        self.logger = logger
+        self.as_ami_id = self.config.cfg.get('infrastructure', 'ami_id')
 
     def create(self):
         self.conn = boto.ec2.autoscale.connect_to_region(
-            self.region,
-            aws_access_key_id=self.access_key,
-            aws_secret_access_key=self.secret_key
+            self.config.region,
+            aws_access_key_id=self.config.access_key,
+            aws_secret_access_key=self.config.secret_key
         )
 
         lb = self.create_load_balancer()
@@ -38,9 +39,9 @@ class Autoscalability(AWSConfig):
         self.logger.log("Creating CloudWatch alarms ...")
 
         conn = boto.ec2.cloudwatch.connect_to_region(
-            self.region,
-            aws_access_key_id=self.access_key,
-            aws_secret_access_key=self.secret_key
+            self.config.region,
+            aws_access_key_id=self.config.access_key,
+            aws_secret_access_key=self.config.secret_key
         )
         alarm_dimensions = {'AutoScalingGroupName' : 'cloudscale-as'}
 
@@ -70,14 +71,14 @@ class Autoscalability(AWSConfig):
                                         adjustment_type='ChangeInCapacity',
                                         as_name='cloudscale-as',
                                         scaling_adjustment=1,
-                                        cooldown=self.cooldown
+                                        cooldown=self.config.cooldown
         )
 
         scale_down_policy = ScalingPolicy(name='scale_down',
                                           adjustment_type='ChangeInCapacity',
                                           as_name='cloudscale-as',
                                           scaling_adjustment=-1,
-                                          cooldown=self.cooldown
+                                          cooldown=self.config.cooldown
         )
         self.conn.create_scaling_policy(scale_up_policy)
         self.conn.create_scaling_policy(scale_down_policy)
@@ -95,10 +96,10 @@ class Autoscalability(AWSConfig):
             lc = LaunchConfiguration(self.conn,
                                  "cloudscale-lc",
                                  self.as_ami_id,
-                                 self.key_name,
+                                 self.config.key_name,
                                  ['http'],
                                  None,
-                                 self.instance_type,
+                                 self.config.instance_type,
                                  instance_monitoring=True
             )
 
@@ -116,17 +117,17 @@ class Autoscalability(AWSConfig):
         try:
             tag = Tag(
                 key='Name',
-                value = self.instance_identifier,
+                value = self.config.instance_identifier,
                 propagate_at_launch=True,
                 resource_id='cloudscale-as'
             )
             ag = AutoScalingGroup(group_name='cloudscale-as',
                               load_balancers=[lb_name],
-                              availability_zones=[self.availability_zone],
+                              availability_zones=[self.config.availability_zone],
                               launch_config=lc,
                               desired_capacity=1,
                               min_size=1,
-                              max_size=10,
+                              max_size=20,
                               connection=self.conn,
                               tags=[tag])
             self.conn.create_auto_scaling_group(ag)
@@ -137,9 +138,9 @@ class Autoscalability(AWSConfig):
 
     def create_security_group(self, name, description, cidr, port):
         try:
-            conn = boto.ec2.connect_to_region(self.region,
-                                               aws_access_key_id=self.access_key,
-                                               aws_secret_access_key=self.secret_key
+            conn = boto.ec2.connect_to_region(self.config.region,
+                                               aws_access_key_id=self.config.access_key,
+                                               aws_secret_access_key=self.config.secret_key
             )
             conn.create_security_group(name, description)
             conn.authorize_security_group(group_name=name, ip_protocol='tcp', from_port=port, to_port=port, cidr_ip=cidr)
@@ -153,14 +154,14 @@ class Autoscalability(AWSConfig):
     def create_load_balancer(self):
         self.logger.log("Creating load balancer ...")
         conn = boto.ec2.elb.connect_to_region(
-            self.region,
-            aws_access_key_id=self.access_key,
-            aws_secret_access_key=self.secret_key
+            self.config.region,
+            aws_access_key_id=self.config.access_key,
+            aws_secret_access_key=self.config.secret_key
         )
 
         ports = [(80, 80, 'http')]
 
-        lb = conn.create_load_balancer('cloudscale-lb', self.availability_zone, ports)
+        lb = conn.create_load_balancer('cloudscale-lb', self.config.availability_zone, ports)
 
         return lb
 

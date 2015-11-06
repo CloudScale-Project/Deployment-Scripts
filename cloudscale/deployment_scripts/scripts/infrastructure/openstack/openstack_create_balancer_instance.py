@@ -3,17 +3,19 @@ import os
 from novaclient.v2 import client as novaclient
 import time
 import sys
+import select
 from cloudscale.deployment_scripts.config import OpenstackConfig
 from cloudscale.deployment_scripts.scripts import check_args, get_cfg_logger
 
 
-class CreateInstance(OpenstackConfig):
+class CreateInstance:
 
     def __init__(self, config, logger):
-        OpenstackConfig.__init__(self, config, logger)
+        self.config = config
+        self.logger = logger
         self.instance_name = 'cloudscale-lb'
 
-        self.nc = novaclient.Client(self.user, self.pwd, self.tenant, auth_url=self.url)
+        self.nc = novaclient.Client(self.config.user, self.config.pwd, self.config.tenant, auth_url=self.config.url)
 
         showcase_servers = self.nc.servers.findall(name="cloudscale-sc")
 
@@ -30,7 +32,7 @@ class CreateInstance(OpenstackConfig):
 
         ha_proxy_config = open(self.file_path + '/haproxy.cfg', 'r').read()
         checker = base64.b64encode(open(self.file_path + '/check-running-showcase_instances.py', 'r').read())
-        openstack_config = base64.b64encode(open(self.config.config_path, 'r').read())
+        openstack_config = base64.b64encode(open(self.config.config.config_path, 'r').read())
 
         #############################################################################################################
         # TODO: remove this when instances can connect to openstack, as servers will be automatically added by script
@@ -72,14 +74,14 @@ class CreateInstance(OpenstackConfig):
 
     def create_instance(self, image_name=None, files=None, userdata=None, wait_on_active_status=True):
         if image_name is None:
-            image_name = self.image_name
+            image_name = self.config.image_name
 
         for f in self.nc.flavors.list():
-            if f.name == self.instance_type:
+            if f.name == self.config.instance_type:
                 flavor = f
                 break
         else:
-            self.logger.log("Instance flavor '%s' not found!" % self.instance_type)
+            self.logger.log("Instance flavor '%s' not found!" % self.config.instance_type)
             return False
 
         for img in self.nc.images.list():
@@ -91,7 +93,7 @@ class CreateInstance(OpenstackConfig):
             return False
 
         server_id = self.nc.servers.create(
-            self.instance_name, image, flavor, key_name=self.key_name, files=files, userdata=userdata
+            self.instance_name, image, flavor, key_name=self.config.key_name, files=files, userdata=userdata
         ).id
 
         if wait_on_active_status and not self.wait_active(server_id):
@@ -129,6 +131,17 @@ class CreateInstance(OpenstackConfig):
         self.logger.log("Adding security group %s" % group_name)
         server = self.nc.servers.get(server_id)
         server.add_security_group(group_name)
+
+    def wait_for_command(self, stdout, verbose=False):
+        # Wait for the command to terminate
+        while not stdout.channel.exit_status_ready():
+        # Only print data if there is data to read in the channel
+            if stdout.channel.recv_ready():
+                rl, wl, xl = select.select([stdout.channel], [], [], 0.0)
+                if len(rl) > 0:
+                    response = stdout.channel.recv(1024)
+                    if verbose:
+                        print response
 
 
 if __name__ == '__main__':

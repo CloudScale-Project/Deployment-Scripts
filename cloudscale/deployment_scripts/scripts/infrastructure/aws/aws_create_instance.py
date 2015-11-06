@@ -1,4 +1,3 @@
-import traceback
 import boto, boto.exception
 import boto, boto.ec2
 import boto.manage.cmdshell
@@ -13,7 +12,7 @@ from cloudscale.deployment_scripts.scripts import check_args, get_cfg_logger
 class CreateEC2Instance(AWSConfig):
 
     def __init__(self, config, logger):
-        AWSConfig.__init__(self, config, logger)
+        AWSConfig.__init__(self, config.config, logger)
 
         self.conn = boto.ec2.connect_to_region(
             self.region,
@@ -55,13 +54,14 @@ class CreateEC2Instance(AWSConfig):
         self.create_security_group('http', 'Security group for HTTP protocol', '80', '0.0.0.0/0')
         self.create_security_group('ssh', 'Security group for HTTP protocol', '22', '0.0.0.0/0')
 
+
     def create_security_group(self, name, description, port, cidr):
         try:
             self.conn.create_security_group(name, description)
             self.conn.authorize_security_group(group_name=name, ip_protocol='tcp', from_port=port, to_port=port, cidr_ip=cidr)
         except boto.exception.EC2ResponseError as e:
             if str(e.error_code) != 'InvalidGroup.Duplicate':
-                logger.log(traceback.format_exc())
+                raise
 
     def create_instance(self):
         self.logger.log("Creating EC2 instance ...")

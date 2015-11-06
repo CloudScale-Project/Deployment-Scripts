@@ -252,7 +252,7 @@ sudo mongod --configsvr --dbpath /data/configdb --port 27019 --syslog --fork""")
     "user": "%s",
     "pwd": "%s",
     "roles": [ { "role": "readWrite", "db": "%s" } ]
-})' | mongo %s""" % (self.database_user, self.database_pass, self.database_name, self.database_name))
+})' | mongo %s""" % (self.database_user, self.database_password, self.database_name, self.database_name))
 
         self.logger.log("Close ssh connections, and removing public IPs and ssh security groups")
         for i in range(len(ssh_connections)):
