@@ -40,7 +40,7 @@ application is in ```bin/run.py``` file.
 
 ### Amazon Web Services
 ## Setup RDS service
-Before you can run deployment scripts you must setup RDS service. On RDS service create new Parameter Group with name 'mygroup' and set the parameter ```query_cache_size`` to value 0.
+Before you can run deployment scripts you must setup RDS service. On RDS service create new Parameter Group with name 'mygroup' for MySQL version 5.1 and set the parameter ```query_cache_size`` to value 0.
 
 ## Run deployment scripts
 To deploy showcase on Amazon Web Services edit ```bin/config.aws.ini``` file and run:
