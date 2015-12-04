@@ -1,7 +1,8 @@
 ## CloudScale deployment scripts
 CloudScale deployment scripts are Python scripts for deploying showcase for CloudScale project on Amazon Web Services
-and Openstack. The showcase is a book store written in Java Spring Framework according to TPC-W standard. Scripts are
-configurable so you ca also use them for deploying your application to Amazon Web Services or Openstack.
+and Openstack. The showcase is a book store written in Java Spring Framework according to TPC-W standard. We call it [CloudStore](https://github.com/CloudScale-Project/CloudStore). Scripts are configurable so you can also use them for deploying your application to Amazon Web Services or Openstack.
+
+We also provide the [distributed JMeter scripts](https://github.com/CloudScale-Project/Distributed-Jmeter) for load testing the [CloudStore](https://github.com/CloudScale-Project/CloudStore) application or your own application.
 
 ## About CloudScale project
 The goal of CloudScale is to aid service providers in analysing, predicting and resolving scalability issues,
