@@ -1,3 +1,10 @@
+#
+#  Copyright (c) 2015 XLAB d.o.o.
+#  All rights reserved. This program and the accompanying materials
+#  are made available under the terms of the Eclipse Public License v1.0
+#  which accompanies this distribution, and is available at
+#  http://www.eclipse.org/legal/epl-v10.html
+#
 import base64
 import os
 from novaclient.v2 import client as novaclient
@@ -22,7 +29,7 @@ class CreateInstance:
         if len(showcase_servers) == 1:
             self.logger.log("Only one instance")
             server_id = showcase_servers[0].id
-            self.load_balancer_public_ip = self.add_floating_ip(server_id)
+            self.load_balancer_public_ip = self.nc.servers.get(server_id)._info.get('addresses')['cloudscale-lan'][1]['addr']
             self.add_security_group(server_id, "ssh")
             return
 
@@ -92,8 +99,10 @@ class CreateInstance:
             self.logger.log("Image '%s' not found!" % image_name)
             return False
 
+        network = [{'net-id': network.id} for network in self.config.nc.networks.list() if network.label == 'cloudscale-lan']
         server_id = self.nc.servers.create(
-            self.instance_name, image, flavor, key_name=self.config.key_name, files=files, userdata=userdata
+            self.instance_name, image, flavor, key_name=self.config.key_name, files=files, userdata=userdata,
+            nics=network
         ).id
 
         if wait_on_active_status and not self.wait_active(server_id):
@@ -123,9 +132,12 @@ class CreateInstance:
         unallocated_floating_ips = self.nc.floating_ips.findall(fixed_ip=None)
         if len(unallocated_floating_ips) < 1:
             unallocated_floating_ips.append(self.nc.floating_ips.create())
-        floating_ip = unallocated_floating_ips[0]
-        server.add_floating_ip(floating_ip)
-        return floating_ip.ip
+
+        for ip_address in unallocated_floating_ips:
+            if ip_address.pool == 'xlab-network':
+                server.add_floating_ip(ip_address)
+                break
+        return ip_address.ip
 
     def add_security_group(self, server_id, group_name):
         self.logger.log("Adding security group %s" % group_name)

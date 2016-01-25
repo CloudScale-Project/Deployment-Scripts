@@ -1,5 +1,5 @@
 #!/bin/bash
-PATH_TO_MYSQL_COMMAND=/usr/bin
+PATH_TO_MYSQL_COMMAND=/usr/local/mysql/bin/
 
 if [ $# -lt 5 ]
 then

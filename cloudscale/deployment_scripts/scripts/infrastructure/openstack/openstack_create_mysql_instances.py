@@ -1,3 +1,10 @@
+#
+#  Copyright (c) 2015 XLAB d.o.o.
+#  All rights reserved. This program and the accompanying materials
+#  are made available under the terms of the Eclipse Public License v1.0
+#  which accompanies this distribution, and is available at
+#  http://www.eclipse.org/legal/epl-v10.html
+#
 import os
 from novaclient.v2 import client as novaclient
 import time
@@ -64,16 +71,22 @@ echo '
         self.logger.log('Done creating database instances')
 
     def create_master_slave(self):
-        master_private_ip, master_ip  = self.create_master()
-        slaves = self.create_slave(master_private_ip, int(self.config.database_num_replicas)-1)
-        self.upload_mysql_dump(master_private_ip)
-        ssh = self.ssh_to_instance(master_private_ip)
-        _ ,stdout, _ = ssh.exec_command("mysql -u root -ppassword -D tpcw < ~/dump.sql")
-        self.wait_for_command(stdout, True)
-        url = master_private_ip
+        if self.config.database_host == '' or self.config.database_host is None:
+            master_private_ip, master_ip  = self.create_master()
 
-        if self.config.database_num_replicas > 1:
-            url = master_private_ip + ',' + ",".join([private_ip for _, private_ip in slaves])
+            ssh = self.ssh_to_instance(master_private_ip)
+
+            slaves = self.create_slave(master_private_ip, int(self.config.database_num_replicas)-1)
+            self.upload_mysql_dump(master_private_ip)
+
+            _ ,stdout, _ = ssh.exec_command("mysql -u root -ppassword -D tpcw < ~/dump.sql")
+            self.wait_for_command(stdout, True)
+            url = master_private_ip
+
+            if self.config.database_num_replicas > 1:
+                url = master_private_ip + ',' + ",".join([private_ip for _, private_ip in slaves])
+        else:
+            url = self.config.database_host
 
         self.config.config.save('platform', 'urls', url)
 
@@ -98,7 +111,7 @@ echo '
             self.master_file, self.master_position = foo[2].split("|")
 
             ssh.close()
-            private_ip = self.config.nc.servers.get(server_id)._info.get('addresses').get(self.config.tenant)[0].get('addr')
+            private_ip = self.config.nc.servers.get(server_id)._info.get('addresses').get('cloudscale-lan')[0].get('addr')
             return floating_ip, private_ip
         raise Exception("Can't get master_file and master_position")
 
@@ -163,10 +176,10 @@ echo '
         if image_name is None:
             image_name = self.config.image_name
 
-        flavor = self.config.nc.flavors.find(name=self.config.instance_type)
+        flavor = self.config.nc.flavors.find(name=self.config.database_instance_type)
 
         if flavor is None:
-            self.logger.log("Instance flavor '%s' not found!" % self.config.instance_type)
+            self.logger.log("Instance flavor '%s' not found!" % self.config.database_instance_type)
             return False
 
         image = self.config.nc.images.find(name=image_name)
@@ -174,10 +187,8 @@ echo '
             self.logger.log("Image '%s' not found!" % image_name)
             return False
 
-        net = self.config.nc.networks.find(label=self.config.tenant)
-        nics = [{'net-id' : net.id}]
-
-        server_id = self.config.nc.servers.create(self.master_instance_name, image, flavor, key_name=self.config.key_name, userdata=userdata, nics=nics).id
+        network = [{'net-id': network.id} for network in self.config.nc.networks.list() if network.label == 'cloudscale-lan']
+        server_id = self.config.nc.servers.create(self.master_instance_name, image, flavor, key_name=self.config.key_name, userdata=userdata, nics=network).id
 
         #if wait_on_active_status and not self.wait_active(server_id):
         #    return False
@@ -218,9 +229,13 @@ echo '
         unallocated_floating_ips = self.config.nc.floating_ips.findall(fixed_ip=None)
         if len(unallocated_floating_ips) < 1:
             unallocated_floating_ips.append(self.config.nc.floating_ips.create())
-        floating_ip = unallocated_floating_ips[0]
-        server.add_floating_ip(floating_ip)
-        return floating_ip.ip
+
+        for ip in unallocated_floating_ips:
+            if ip.pool == 'xlab-network':
+                server.add_floating_ip(ip)
+                break
+        return ip.ip
+
 
     def add_security_group(self, server_id, group_name):
         self.logger.log("Adding security group %s" % group_name)
@@ -318,10 +333,8 @@ FIRST_NODE_IP=%s
         #scp = paramiko.SFTPClient.from_transport(ssh.get_transport())
         self.logger.log("Uploading mysql dump")
         #scp.put(self.generate_dump_path, 'dump.sql')
-        ssh.exec_command("wget -q -T90 %s -O dump.sql" % self.config.dump_url )
-
-        ssh.exec_command("touch finished")
-
+        _, stdout, _ =  ssh.exec_command("wget -q -T90 %s -O dump.sql" % self.config.dump_url )
+        self.wait_for_command(stdout)
 
 if __name__ == '__main__':
     check_args(2, "<output_dir> <config_path>")

@@ -1,3 +1,10 @@
+#
+#  Copyright (c) 2015 XLAB d.o.o.
+#  All rights reserved. This program and the accompanying materials
+#  are made available under the terms of the Eclipse Public License v1.0
+#  which accompanies this distribution, and is available at
+#  http://www.eclipse.org/legal/epl-v10.html
+#
 import os
 import subprocess
 from novaclient.v2 import client as novaclient
@@ -29,38 +36,38 @@ class CreateInstance:
             self.deploy_name="showcase-1-b"
             self.showcase_image_name = "cloudscale-sc-mongo-image"
 
-        self.delete_image(self.showcase_image_name)
+        # self.delete_image(self.showcase_image_name)
         self.logger.log("Creating showcase instance image:")
-        images = self.config.nc.images.list()
-        for image in images:
-            if image.name == self.showcase_image_name:
-                self.logger.log('Image already exists.')
-                break
-        else:
-            self.file_path = os.path.dirname(__file__) + "/../../software"
-
-            userdata = """#!/bin/bash
-USERNAME=%s
-""" % self.config.remote_user + open(self.file_path + '/install-apache-tomcat.sh', 'r').read()
-            server_id = self.create_instance()
-            time.sleep(90)
-            server_floating_ip = self.add_floating_ip(server_id)
-            self.config.config.save('infrastructure', 'ip_address', server_floating_ip)
-            self.ip_addresses = self.config.cfg.get('infrastructure', 'ip_address').split(",")
-            self.add_security_group(server_id, "ssh")
-
-            self.install_software(server_floating_ip, userdata)
-            self.upload_configs(server_floating_ip)
-
-            deploy_showcase.DeploySoftware(config, self.ip_addresses, self.deploy_name, self.config.key_pair)
-            #self.deploy_showcase(server_floating_ip)
-
-            # self.wait_powered_off(server_floating_ip, server_id)
-            self.create_image(server_id, self.showcase_image_name)
-            time.sleep(60)
-            self.delete_instance(server_id)
-
-            self.logger.log('Done creating showcase instance image')
+#         images = self.config.nc.images.list()
+#         for image in images:
+#             if image.name == self.showcase_image_name:
+#                 self.logger.log('Image already exists.')
+#                 break
+#         else:
+#             self.file_path = os.path.dirname(__file__) + "/../../software"
+#
+#             userdata = """#!/bin/bash
+# USERNAME=%s
+# """ % self.config.remote_user + open(self.file_path + '/install-apache-tomcat.sh', 'r').read()
+#             server_id = self.create_instance()
+#             time.sleep(90)
+#             server_floating_ip = self.add_floating_ip(server_id)
+#             self.config.config.save('infrastructure', 'ip_address', server_floating_ip)
+#             self.ip_addresses = self.config.cfg.get('infrastructure', 'ip_address').split(",")
+#             self.add_security_group(server_id, "ssh")
+#
+#             self.install_software(server_floating_ip, userdata)
+#             self.upload_configs(server_floating_ip)
+#
+#             deploy_showcase.DeploySoftware(config, self.ip_addresses, self.deploy_name, self.config.key_pair)
+#             #self.deploy_showcase(server_floating_ip)
+#             time.sleep(60)
+#             # self.wait_powered_off(server_floating_ip, server_id)
+#             self.create_image(server_id, self.showcase_image_name)
+#             time.sleep(60)
+#             self.delete_instance(server_id)
+#
+#             self.logger.log('Done creating showcase instance image')
 
         self.logger.log('Creating showcase instances')
         self.create_showcase_instances()
@@ -146,8 +153,11 @@ USERNAME=%s
             self.logger.log("Image '%s' not found!" % image_name)
             return False
 
+        network = [{'net-id': network.id} for network in self.config.nc.networks.list() if network.label == 'cloudscale-lan']
+
         server_id = self.config.nc.servers.create(
-            self.instance_name, image, flavor, key_name=self.config.key_name, files=files, userdata=userdata
+            self.instance_name, image, flavor, key_name=self.config.key_name, files=files, userdata=userdata,
+            nics=network
         ).id
 
         #if wait_on_active_status and not self.wait_active(server_id):
@@ -193,7 +203,8 @@ USERNAME=%s
     def create_image(self, server_id, image_name):
         self.logger.log("Creating image ...")
         server = self.config.nc.servers.get(server_id)
-        image_id = server.create_image(image_name)
+        image_id = self.config.nc.servers.create_image(server_id, image_name)
+        # image_id = server.create_image(server_id, image_name)
 
         while True:
             image = self.config.nc.images.get(image_id)
@@ -202,7 +213,7 @@ USERNAME=%s
             if image.status == u'ERROR':
                 self.logger.log("Error creating image!")
                 return False
-            time.sleep(10)
+            time.sleep(30)
 
     def compile(self):
         self.logger.log("Downloading showcase from Jenkins...")
@@ -236,6 +247,9 @@ USERNAME=%s
         self.wait_all_instances_active(showcase_server_ids)
 
         for server_id in showcase_server_ids:
+            ip_address = self.add_floating_ip(server_id)
+
+            deploy_showcase.DeploySoftware(self.config, [ip_address], self.deploy_name, self.config.key_pair)
             self.add_security_group(server_id, 'http')
 
     def add_floating_ip(self, server_id):
@@ -243,9 +257,11 @@ USERNAME=%s
         unallocated_floating_ips = self.config.nc.floating_ips.findall(fixed_ip=None)
         if len(unallocated_floating_ips) < 1:
             unallocated_floating_ips.append(self.config.nc.floating_ips.create())
-        floating_ip = unallocated_floating_ips[0]
-        server.add_floating_ip(floating_ip)
-        return floating_ip.ip
+        for ip in unallocated_floating_ips:
+            if ip.pool == 'xlab-network':
+                server.add_floating_ip(ip)
+                break
+        return ip.ip
 
     def add_security_group(self, server_id, group_name):
         self.logger.log("Adding security group %s" % group_name)

@@ -1,4 +1,12 @@
+#
+#  Copyright (c) 2015 XLAB d.o.o.
+#  All rights reserved. This program and the accompanying materials
+#  are made available under the terms of the Eclipse Public License v1.0
+#  which accompanies this distribution, and is available at
+#  http://www.eclipse.org/legal/epl-v10.html
+#
 import novaclient.v2.client as novaclient
+
 import sys
 from cloudscale.deployment_scripts.scripts import check_args, get_cfg_logger
 

@@ -1,3 +1,10 @@
+#
+#  Copyright (c) 2015 XLAB d.o.o.
+#  All rights reserved. This program and the accompanying materials
+#  are made available under the terms of the Eclipse Public License v1.0
+#  which accompanies this distribution, and is available at
+#  http://www.eclipse.org/legal/epl-v10.html
+#
 from novaclient import client
 from cloudscale.deployment_scripts.scripts import read_config, create_user_path
 
@@ -66,6 +73,7 @@ class OpenstackConfig:
         self.database_name              = self.cfg.get('DATABASE', 'database_name')
         self.database_user              = self.cfg.get('DATABASE', 'database_user')
         self.database_password          = self.cfg.get('DATABASE', 'database_pass')
+        self.database_host              = self.cfg.get('DATABASE', 'database_host')
         self.connection_pool_size       = int(self.cfg.get('DATABASE', 'connection_pool_size'))
         self.mongo_image_name           = self.cfg.get('MONGODB', 'image_name')
         self.mysql_setup_type           = self.cfg.get('MYSQL', 'setup_type')
