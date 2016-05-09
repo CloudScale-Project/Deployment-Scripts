@@ -103,6 +103,60 @@ For deploying CloudStore on Amazon Web Services use ```bin/config.aws.example.in
 
 For OpenStack we have included support for MySQL database and MongoDB database (**alpha**).
 
+#### OpenStack MySQL configuration file structure
+
+##### [OPENSTACK]
+
+```username``` - Provide username to authenticate to OpenStack 
+
+```password``` - Provide password to authenticate to OpenStack
+
+```tenant_name``` - Tenant VMs will launch in
+
+```auth_url``` - Keystone authentication URL
+
+```key_name``` - Name of key pair used to authenticate to VM
+
+```key_pair``` - Path to key pair used to authenticate to VM
+
+##### [APPLICATION]
+
+```num_instances``` - Number of instances to provision
+
+```image_name``` - Name of the VM image to provision new VMs from
+
+```image_username``` - Name of the user for SSH authentication
+
+```instance_type``` - Flavor used for new instances
+
+##### [DATABASE]
+
+```database_type``` - Database type (```mysql``` or ```mongodb```)
+
+```database_name``` - Database name
+
+```database_host``` - Database host
+
+```database_user``` - Database user
+
+```database_pass``` - Database password
+
+```instance_type``` - Flavor used for database instances
+
+```num_replicas``` - Number of replicas without master instance (if replication is used)
+
+```connection_pool_size``` - Connection pool size
+
+##### [MYSQL]
+
+```setup_type``` - Type of setup (```master-slave``` or ```master-master```)
+
+```dump_url``` - URL to SQL dump 
+
+```image_name``` - Name of image used to provision new instances from
+
+```showcase_url``` - URL to the WAR where showcase is hosted
+
 ## Usage
 You can run each script in ```cloudscale/deployment_scripts/scripts``` as standalone or use the wrapper around them in ```bin/run.py```.
 Since these are Python scripts you can run it with ```python``` interpreter.
