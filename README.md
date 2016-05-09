@@ -4,40 +4,120 @@ and Openstack. The showcase is a book store written in Java Spring Framework acc
 
 We also provide the [distributed JMeter scripts](https://github.com/CloudScale-Project/Distributed-Jmeter) for load testing the [CloudStore](https://github.com/CloudScale-Project/CloudStore) application or your own application.
 
-## About CloudScale project
-The goal of CloudScale is to aid service providers in analysing, predicting and resolving scalability issues,
-i.e., support scalable service engineering. The project extends existing and develops new solutions that support
-the handling of scalability problems of software-based services.
-
-You can read more about CloudScale project on: http://www.cloudscale-project.eu
-
 ## Prerequisites
-Before you can use deployment scripts you need to install MySQL on your system. You can do that by executing command:
-
-```
-$ brew install mysql
-```
-
-You should also check the path to the ```mysql``` command in ```scripts/platform/aws/dump.sh``` file. This path can be different, depends on OS on which you are running deployment scripts. On Linux it is in ```/usr/bin/mysql``` or ```/bin/mysql```.
+Using deployment scripts requires that you have already installed the following software:
+- Python 2.7
+- pip
+- virtualenv
+- MySQL database 
 
 ## Installation
-To install scripts download zip or checkout repository and then run:
 
-```
-$ python setup.py install
-```
+1. Create new virtual environment using Python package ```virtualenv```
 
+2. In newly created environment execute the following command:
+
+  ```
+  $ pip install -e https://github.com/CloudScale-project/Showcase/deployment-scripts/zipball/deployment-scripts
+  ```
+
+  You can also install it manually by downloading ZIP archive and execute:
+
+  ```
+  $ python setup.py install
+  ```
+
+  from extracted ZIP archive.
+
+3. 
 This will install CloudScale deployment scripts to your ```site-packages``` folder of your Python distribution.
 
-If you want to install it with ```pip``` you can do this by running the following command:
+## Configuration
+Deployment scripts enables user to deploy [CloudStore](https://github.com/CloudScale-Project/CloudStore) on Amazon Web Services or OpenStack.
 
-```
-$ pip install -e https://github.com/CloudScale-project/Showcase/deployment-scripts/zipball/deployment-scripts
-```
+We already provide example config files for both clouds and you can find them in ```bin/``` directory.
+On OpenStack you can also deploy CloudStore using MongoDB (**alpha**).
+
+### Amazon Web Services configuration file
+For deploying CloudStore on Amazon Web Services use ```bin/config.aws.example.ini``` config file which is structured like:
+
+##### [DATABASE]
+
+```name``` - Database name
+
+```user``` - Username used to authenticate to database 
+
+```password``` - Password used to authenticate to database
+
+```dump_url``` - URL to the database dump. See also 
+
+##### [APPLICATION]
+
+```distribution_url``` - URL to compiled and packaged version of CloudStore.
+
+```connection_pool_size``` - Connection pool size to database. If using multiple databases, value should tell maximum number of connection to **one** database.
+
+```num_instances``` - Number of database instances
+
+##### [AUTO_SCALABILITY]
+
+```enabled``` - Possible values: 'yes' or 'no'. Enables or disable autoscalability
+
+```cooldown``` - How many seconds does autoscaling waits before executing new autoscaling operation. See [AWS documentation](http://docs.aws.amazon.com/AutoScaling/latest/DeveloperGuide/Cooldown.html)
+
+##### [AWS]
+
+```aws_access_key_id``` - AWS access key
+
+```aws_secret_access_key``` - AWS secret key
+
+```region``` - Codename of the region where all instances should be deployed
+
+```availability_zone``` - Default availability zone of region where instances should be deployed
+
+##### [RDS]
+
+```instance_type``` - RDS instance type
+
+```num_replicas``` - Number of RDS replicas
+
+```master_identifier``` - Identifier for master RDS instance
+
+```replica_identifier``` - Identifier for replica RDS instance
+
+##### [EC2]
+
+```instance_type``` - EC2 instance type
+
+```ami_id``` - Amazon Machine Image from which all EC2 instances will be provisioned
+
+```key_name``` - Name of the key pair on the AWS
+
+```key_pair``` - Path to key pair. It's auto generated
+
+```remote_user``` - Default username to SSH to EC2 instances
+
+```instance_identifier``` - Instance identifier
+
+### OpenStack configuration file
+
+For OpenStack we have included support for MySQL database and MongoDB database (**alpha**).
 
 ## Usage
-You can run scripts in ```cloudscale/deployment_scripts/scripts/``` as standalone or use them as part of your application. The example of using scripts as part of your
-application is in ```bin/run.py``` file.
+You can run each script in ```cloudscale/deployment_scripts/scripts``` as standalone or use the wrapper around them in ```bin/run.py```.
+Since these are Python scripts you can run it with ```python``` interpreter.
+
+Example for deploying CloudStore on OpenStack:
+
+```
+$ python bin/run.py openstack bin/config.openstack.mysql.example.ini
+```
+
+The general usage for ```run.py``` is:
+
+```
+$ python bin/run.py <aws|openstack> <path to config>
+```
 
 ### Amazon Web Services
 ## Setup RDS service
