@@ -169,7 +169,7 @@ Please see description for [*OpenStack MySQL configuration file structure*](#app
 
 ##### [DATABASE]
 
-Please see description for [*OpenStack MySQL configuration file structure*](#openstack-mysql-configuration-file-structure)
+Please see description for [*OpenStack MySQL configuration file structure*](#database-1)
 
 ##### [MONGODB]
 ```dump_url``` - URL to MongoDB archive containing exported database
