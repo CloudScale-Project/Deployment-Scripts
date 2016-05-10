@@ -172,8 +172,11 @@ Please see description for [*OpenStack MySQL configuration file structure*](#app
 Please see description for [*OpenStack MySQL configuration file structure*](#database-1)
 
 ##### [MONGODB]
+
 ```dump_url``` - URL to MongoDB archive containing exported database
+
 ```image_name``` - Name of the image on OpenStack to provision MongoDB instance from
+
 ```showcase_url``` - URL to the WAR where CloudStore is hosted
 
 ## Usage
