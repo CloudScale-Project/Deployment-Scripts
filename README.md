@@ -131,7 +131,7 @@ For OpenStack we have included support for MySQL database and MongoDB database (
 
 ##### [DATABASE]
 
-```database_type``` - Database type (```mysql``` or ```mongodb```)
+```database_type``` - Database type (```mysql``` for MySQL and ```mongo``` for MongoDB)
 
 ```database_name``` - Database name
 
@@ -155,7 +155,26 @@ For OpenStack we have included support for MySQL database and MongoDB database (
 
 ```image_name``` - Name of image used to provision new instances from
 
-```showcase_url``` - URL to the WAR where showcase is hosted
+```showcase_url``` - URL to the WAR where CloudStore is hosted
+
+#### OpenStack MongoDB configuration file structure
+
+##### [OPENSTACK]
+
+Please see description for *OpenStack MySQL configuration file structure*
+
+##### [APPLICATION]
+
+Please see description for *OpenStack MySQL configuration file structure*
+
+##### [DATABASE]
+
+Please see description for *OpenStack MySQL configuration file structure*
+
+##### [MONGODB]
+```dump_url``` - URL to MongoDB archive containing exported database
+```image_name``` - Name of the image on OpenStack to provision MongoDB instance from
+```showcase_url``` - URL to the WAR where CloudStore is hosted
 
 ## Usage
 You can run each script in ```cloudscale/deployment_scripts/scripts``` as standalone or use the wrapper around them in ```bin/run.py```.
