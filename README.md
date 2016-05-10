@@ -161,15 +161,15 @@ For OpenStack we have included support for MySQL database and MongoDB database (
 
 ##### [OPENSTACK]
 
-Please see description for *OpenStack MySQL configuration file structure*
+Please see description for [*OpenStack MySQL configuration file structure*](#openstack-mysql-configuration-file-structure)
 
 ##### [APPLICATION]
 
-Please see description for *OpenStack MySQL configuration file structure*
+Please see description for [*OpenStack MySQL configuration file structure*](#openstack-mysql-configuration-file-structure)
 
 ##### [DATABASE]
 
-Please see description for *OpenStack MySQL configuration file structure*
+Please see description for [*OpenStack MySQL configuration file structure*](#openstack-mysql-configuration-file-structure)
 
 ##### [MONGODB]
 ```dump_url``` - URL to MongoDB archive containing exported database
