@@ -161,11 +161,11 @@ For OpenStack we have included support for MySQL database and MongoDB database (
 
 ##### [OPENSTACK]
 
-Please see description for [*OpenStack MySQL configuration file structure*](#openstack-mysql-configuration-file-structure)
+Please see description for [*OpenStack MySQL configuration file structure*](#openstack)
 
 ##### [APPLICATION]
 
-Please see description for [*OpenStack MySQL configuration file structure*](#openstack-mysql-configuration-file-structure)
+Please see description for [*OpenStack MySQL configuration file structure*](#application-1)
 
 ##### [DATABASE]
 
